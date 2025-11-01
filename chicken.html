@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JuanderChicken Delivery</title>
+  <style>
+    body { font-family: 'Poppins', sans-serif; background: #fff9f5; margin: 0; padding: 0; }
+    .container { max-width: 900px; margin: auto; padding: 20px; }
+    h1 { text-align: center; color: #e63946; }
+    .menu { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+    .card { background: #fff; padding: 15px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); text-align: center; }
+    img { width: 100%; height: 150px; object-fit: cover; border-radius: 10px; }
+    button { background: #e63946; color: white; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; }
+    button:hover { background: #b71c1c; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; background: white; }
+    th, td { padding: 10px; border-bottom: 1px solid #ddd; text-align: center; }
+    input[type='number'] { width: 60px; text-align: center; padding: 5px; }
+    .remove-btn { background: #ff4d4d; border: none; color: white; padding: 5px 8px; border-radius: 6px; cursor: pointer; }
+    .remove-btn:hover { background: #c62828; }
+    .total { text-align: right; font-weight: bold; margin-top: 10px; }
+    .success { display: none; background: #4caf50; color: white; padding: 10px; text-align: center; border-radius: 5px; margin-top: 15px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🍗 JuanderChicken Delivery</h1>
+
+    <div class="menu" id="menu"></div>
+
+    <h2>🛒 Your Cart</h2>
+    <table id="cartTable">
+      <thead>
+        <tr><th>Item</th><th>Qty</th><th>Price</th><th>Remove</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <div class="total" id="totalDisplay">Total: ₱0</div>
+
+    <h2>📦 Delivery Info</h2>
+    <input type="text" id="name" placeholder="Full Name" style="width:100%;margin:5px 0;padding:8px;"><br>
+    <input type="text" id="address" placeholder="Address" style="width:100%;margin:5px 0;padding:8px;"><br>
+    <input type="text" id="contact" placeholder="Contact Number" style="width:100%;margin:5px 0;padding:8px;"><br>
+
+    <button onclick="placeOrder()">Place Order</button>
+    <div class="success" id="successMsg">✅ Your order was placed successfully!</div>
+  </div>
+
+  <script>
+    // ✅ Google Apps Script Web App URL
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyyucgXDrKYYcMF9D0RRQFPDN3ejtAxJANhL-E2uUsx9C3SxYsTSqXBgUb80p7cK67-og/exec";
+
+    // Menu items
+    const menu = [
+      { id: 1, name: "Original Chicken", price: 99, img: "https://slight-pink-qqxnn7zzq5.edgeone.app/original.jpg" },
+      { id: 2, name: "Spicy Chicken", price: 109, img: "https://profitable-bronze-dtcvcukrdq.edgeone.app/spicy%20chicken.jpg" },
+      { id: 3, name: "Chicken Burger", price: 89, img: "https://sharp-maroon-qeip4i7trq.edgeone.app/chicken%20burger.jpg" },
+      { id: 4, name: "JuanderFries", price: 59, img: "https://hollow-fuchsia-blpmhtg3v5.edgeone.app/juanderfries.jpg" }
+    ];
+
+    let cart = [];
+
+    // Display menu
+    const menuContainer = document.getElementById('menu');
+    menu.forEach(item => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `
+        <img src="${item.img}" alt="${item.name}">
+        <h3>${item.name}</h3>
+        <p>₱${item.price}</p>
+        <button onclick="addToCart(${item.id})">Add to Cart</button>
+      `;
+      menuContainer.appendChild(card);
+    });
+
+    // Add to cart
+    function addToCart(id) {
+      const item = menu.find(p => p.id === id);
+      const existing = cart.find(p => p.id === id);
+      if (existing) existing.qty++;
+      else cart.push({ ...item, qty: 1 });
+      updateCart();
+    }
+
+    // Update cart display
+    function updateCart() {
+      const tbody = document.querySelector('#cartTable tbody');
+      tbody.innerHTML = '';
+
+      cart.forEach(item => {
+        tbody.innerHTML += `
+          <tr>
+            <td>${item.name}</td>
+            <td>
+              <input type="number" min="1" value="${item.qty}" onchange="updateQty(${item.id}, this.value)">
+            </td>
+            <td>₱${item.price * item.qty}</td>
+            <td><button class="remove-btn" onclick="removeItem(${item.id})">✖</button></td>
+          </tr>
+        `;
+      });
+
+      const total = cart.reduce((sum, i) => sum + i.price * i.qty, 0);
+      document.getElementById('totalDisplay').innerText = `Total: ₱${total}`;
+    }
+
+    // Update quantity
+    function updateQty(id, qty) {
+      const item = cart.find(i => i.id === id);
+      if (item) {
+        item.qty = parseInt(qty);
+        if (item.qty <= 0) removeItem(id);
+      }
+      updateCart();
+    }
+
+    // Remove item
+    function removeItem(id) {
+      cart = cart.filter(i => i.id !== id);
+      updateCart();
+    }
+
+    // Place order
+    function placeOrder() {
+      const name = document.getElementById('name').value.trim();
+      const address = document.getElementById('address').value.trim();
+      const contact = document.getElementById('contact').value.trim();
+
+      if (!name || !address || !contact || cart.length === 0) {
+        alert("Please complete all fields and add items to cart.");
+        return;
+      }
+
+      const orderData = {
+        name,
+        address,
+        contact,
+        items: cart.map(i => `${i.name} x${i.qty}`).join(', '),
+        total: cart.reduce((sum, i) => sum + i.price * i.qty, 0)
+      };
+
+      fetch(GOOGLE_SCRIPT_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(orderData)
+      })
+      .then(() => {
+        document.getElementById('successMsg').style.display = 'block';
+        cart = [];
+        updateCart();
+        document.getElementById('name').value = '';
+        document.getElementById('address').value = '';
+        document.getElementById('contact').value = '';
+        setTimeout(() => document.getElementById('successMsg').style.display = 'none', 4000);
+      })
+      .catch(err => alert('Error placing order: ' + err));
+    }
+  </script>
+</body>
+</html>
